@@ -16,7 +16,7 @@ enum Item {
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 struct Bitset {
-    backing: usize,
+    backing: u8,
 }
 
 impl Bitset {
@@ -32,6 +32,10 @@ impl Bitset {
         self.backing &= !(1 << val);
     }
 
+    fn clear(&mut self) {
+        self.backing = 0;
+    }
+
     fn contains(&self, val: u8) -> bool {
         let value = self.backing & (1 << val);
         value != 0
@@ -43,13 +47,13 @@ impl Bitset {
 
     fn iter(&self) -> impl Iterator<Item = u8> + Clone {
         let clone = self.clone();
-        (0..usize::BITS)
+        (0..u8::BITS)
             .filter(move |val| clone.contains(*val as u8))
             .map(|val| val as u8)
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct Floor {
     generators: Bitset,
     microchips: Bitset,
@@ -76,6 +80,11 @@ impl Floor {
         let single_chps = microchips.map(|c| vec![c]);
 
         pairs.chain(single_gens).chain(single_chps)
+    }
+
+    fn clear(&mut self) {
+        self.generators.clear();
+        self.microchips.clear();
     }
 
     fn contains(&self, item: &Item) -> bool {
@@ -127,6 +136,39 @@ impl Reactor {
         Reactor {
             cur_idx: self.cur_idx,
             floors,
+        }
+    }
+
+    fn canonicalize(&mut self) {
+        let mut gen_pos: HashMap<u8, usize> = HashMap::new();
+        let mut chp_pos: HashMap<u8, usize> = HashMap::new();
+
+        for (floor_idx, floor) in self.floors.iter().enumerate() {
+            for g in floor.generators.iter() {
+                gen_pos.insert(g, floor_idx);
+            }
+            for c in floor.microchips.iter() {
+                chp_pos.insert(c, floor_idx);
+            }
+        }
+
+        let mut pairs = Vec::new();
+        for id in 0..u8::BITS {
+            let id = id as u8;
+            if let (Some(&gf), Some(&cf)) = (gen_pos.get(&id), chp_pos.get(&id)) {
+                pairs.push((gf, cf));
+            }
+        }
+
+        pairs.sort_unstable();
+
+        for floor in &mut self.floors {
+            floor.clear();
+        }
+
+        for (new_id, (gf, cf)) in pairs.into_iter().enumerate() {
+            self.floors[gf].generators.insert(new_id as u8);
+            self.floors[cf].microchips.insert(new_id as u8);
         }
     }
 
@@ -310,9 +352,10 @@ fn solve(reactor: Reactor) -> Option<usize> {
 
         for items in floor.items_it() {
             for off in [-1, 1] {
-                let Some(new_reactor) = reactor.move_items(&items, off) else {
+                let Some(mut new_reactor) = reactor.move_items(&items, off) else {
                     continue;
                 };
+                new_reactor.canonicalize();
                 if seen.contains(&new_reactor) {
                     continue;
                 }
