@@ -197,3 +197,13 @@ fn part_two(input: &str) -> Bot {
         return out_0 * out_1 * out_2;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn example_output_product() {
+        assert_eq!(part_two(include_str!("../example.txt")), 30);
+    }
+}

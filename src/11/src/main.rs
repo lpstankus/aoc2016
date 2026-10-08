@@ -72,9 +72,7 @@ impl Floor {
             .map(|c| Item::Microchip(Microchip(c)));
 
         let all = generators.clone().chain(microchips.clone());
-        let pairs = all
-            .tuple_combinations()
-            .map(|tuple: (Item, Item)| vec![tuple.0, tuple.1]);
+        let pairs = all.array_combinations().map(|[a, b]: [Item; 2]| vec![a, b]);
 
         let single_gens = generators.map(|g| vec![g]);
         let single_chps = microchips.map(|c| vec![c]);
@@ -125,8 +123,8 @@ impl Reactor {
                 generators: Bitset::new(),
                 microchips: Bitset::new(),
             };
-            for gen in floor.generators.iter() {
-                cloned_floor.generators.insert(gen);
+            for generator in floor.generators.iter() {
+                cloned_floor.generators.insert(generator);
             }
             for chp in floor.microchips.iter() {
                 cloned_floor.microchips.insert(chp);
@@ -194,9 +192,9 @@ impl Reactor {
 
         for item in items {
             match item {
-                Item::Generator(gen) => {
-                    new_reactor.floors[old_floor].generators.remove(gen.0);
-                    new_reactor.floors[new_floor].generators.insert(gen.0);
+                Item::Generator(generator) => {
+                    new_reactor.floors[old_floor].generators.remove(generator.0);
+                    new_reactor.floors[new_floor].generators.insert(generator.0);
                 }
                 Item::Microchip(chp) => {
                     new_reactor.floors[old_floor].microchips.remove(chp.0);
